@@ -1,25 +1,109 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "R Markdown example for the Reproducible Research course by Coursera"
+author: "Serge Shmygelskyy aka Shmyg"
+date: "16.04.2015"
+output: html_document
 ---
 
+This document is created as per Assignment #2 of the course.
 
-## Loading and preprocessing the data
+## Data loading
 
+Normally the file is already present in the repository, but I prefer to check if it's there just in case. Workflow:
 
+* look for the file in the current directory
+* if not found, download
+* decompress
+* read into a dataframe
 
-## What is mean total number of steps taken per day?
+```{r, echo = TRUE}
+url <- 'https://d396qusza40orc.cloudfront.net/repstats%2Fstats%2Factivity.zip'
+zipfile <- 'activity.zip'
 
+if (!file.exists(zipfile)) {
+        download.file (url, zipfile, method = 'curl')
+} 
+unzip(zipfile)
+stats <- read.csv("activity.csv")
 
+```
 
-## What is the average daily activity pattern?
+## Number of steps taken per day, histogram, mean and median values
 
+```{r, echo=TRUE}
+library('dplyr')
+days <- group_by (stats, date)
+finalData2 <- summarize(days, steps = sum(steps))
+hist(finalData2$steps,
+        main = 'Histogram of total number of steps per day',
+        xlab = 'Number of steps')
 
+mean(finalData2$steps, na.rm = TRUE)
+median(finalData2$steps, na.rm = TRUE)
 
-## Imputing missing values
+```
 
+## Average daily activity pattern
 
+Calculated by means of standard SQL
+```{r, echo=TRUE}
+library('sqldf')
+avgPerInterval <- sqldf('select interval, avg(steps) as steps from stats group by interval')
+plot (avgPerInterval, type = 'h')
+avgPerInterval[which.max(avgPerInterval$steps),]
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+So the the winner (5-minute interval with the maximum number of steps) is `r avgPerInterval[which.max(avgPerInterval$steps),]$interval`
+
+## Imputing missing data
+
+Here we'll replace missing data (_steps_ variable) with the mean value of steps taken during this interval accross all the measurements
+
+Number of incomplete cases:
+
+```{r, echo=TRUE}
+sum(is.na(stats$steps))
+```
+
+Imputing data
+
+```{r, echo=TRUE}
+completeData <- stats
+for (i in 1:nrow(completeData)) { 
+        if ( is.na(completeData[i,]$steps )) {
+                completeData[i,]$steps <- avgPerInterval[avgPerInterval$interval == completeData[i,]$interval, "steps"]
+        }
+}
+
+days <- group_by (completeData, date)
+finalData4 <- summarize(days, steps = sum(steps))
+
+hist(finalData4$steps,
+        main = 'Histogram of total number of steps per day with imputed values',
+        xlab = 'Number of steps')
+
+mean(finalData4$steps)
+median(finalData4$steps)
+```
+
+There are no tangible changes in the histogram after the missing values have been removed
+
+## Difference in activity patterns between weekdays adn weekends
+
+Here we'll add a column to the dataframe using _weekdays()_ function.
+
+```{r, echo=TRUE}
+for (i in 1:nrow(completeData)) {
+        day <- weekdays(as.Date(completeData[i, "date"]))
+        if (day %in% c('Saturday', 'Sunday')) {
+                completeData[i, "day"] <- 'Weekend'
+        }
+        else {
+                completeData[i, "day"] <- 'Weekday'
+        }
+}
+
+completeData <- transform(completeData, day = factor(day))
+dayTypes <- group_by (completeData, day)
+finalData5 <- summarize(dayTypes, steps = sum(steps))
+```
