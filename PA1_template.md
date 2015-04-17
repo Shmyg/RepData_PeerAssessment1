@@ -18,7 +18,8 @@ Normally the file is already present in the repository, but I prefer to check if
 * decompress
 * read into a dataframe
 
-```{r, echo = TRUE}
+
+```r
 url <- 'https://d396qusza40orc.cloudfront.net/repstats%2Fstats%2Factivity.zip'
 zipfile <- 'activity.zip'
 
@@ -27,36 +28,61 @@ if (!file.exists(zipfile)) {
 } 
 unzip(zipfile)
 stats <- read.csv("activity.csv")
-
 ```
 
 ## Number of steps taken per day, histogram, mean and median values
 
-```{r, echo=TRUE}
+
+```r
 library('dplyr')
 days <- group_by (stats, date)
 finalData2 <- summarize(days, steps = sum(steps))
 hist(finalData2$steps,
         main = 'Total number of steps per day',
         xlab = 'Number of steps')
+```
 
+![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2-1.png) 
+
+```r
 mean(finalData2$steps, na.rm = TRUE)
-median(finalData2$steps, na.rm = TRUE)
+```
 
+```
+## [1] 10766.19
+```
+
+```r
+median(finalData2$steps, na.rm = TRUE)
+```
+
+```
+## [1] 10765
 ```
 
 ## Average daily activity pattern
 
 Calculated by means of standard SQL
-```{r, echo=TRUE}
+
+```r
 library('sqldf')
 avgPerInterval <- sqldf('select interval, avg(steps) as steps from stats group by interval')
 plot (avgPerInterval, type = 'h', main = 'Total number of steps per 5-min interval',
 	xlab = 'Interval', ylab = 'Number of steps')
+```
+
+![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3-1.png) 
+
+```r
 avgPerInterval[which.max(avgPerInterval$steps),]
 ```
 
-So the the winner (5-minute interval with the maximum number of steps) is `r avgPerInterval[which.max(avgPerInterval$steps),]$interval`
+```
+##     interval steps
+## 104      835   206
+```
+
+So the the winner (5-minute interval with the maximum number of steps) is 835
 
 ## Imputing missing data
 
@@ -64,13 +90,19 @@ Here we'll replace missing data (_steps_ variable) with the mean value of steps 
 
 Number of incomplete cases:
 
-```{r, echo=TRUE}
+
+```r
 sum(is.na(stats$steps))
+```
+
+```
+## [1] 2304
 ```
 
 Imputing data
 
-```{r, echo=TRUE}
+
+```r
 completeData <- stats
 for (i in 1:nrow(completeData)) { 
         if ( is.na(completeData[i,]$steps )) {
@@ -84,9 +116,24 @@ finalData4 <- summarize(days, steps = sum(steps))
 hist(finalData4$steps,
         main = 'Histogram of total number of steps per day with imputed values',
         xlab = 'Number of steps')
+```
 
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png) 
+
+```r
 mean(finalData4$steps)
+```
+
+```
+## [1] 10749.77
+```
+
+```r
 median(finalData4$steps)
+```
+
+```
+## [1] 10641
 ```
 
 There are no tangible changes in the histogram after the missing values have been removed
@@ -95,7 +142,8 @@ There are no tangible changes in the histogram after the missing values have bee
 
 Here we'll add a column to the dataframe using _weekdays()_ function.
 
-```{r, echo=TRUE}
+
+```r
 library('ggplot2')
 for (i in 1:nrow(completeData)) {
         day <- weekdays(as.Date(completeData[i, "date"]))
@@ -111,3 +159,5 @@ completeData <- transform(completeData, day = factor(day))
 avgPerInterval5 <- sqldf('select interval, day, avg(steps) as steps from completeData group by interval, day')
 ggplot(avgPerInterval5, aes(interval, steps)) + geom_line() + facet_grid(day ~ .) + xlab("Interval") + ylab("Number of steps")
 ```
+
+![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6-1.png) 

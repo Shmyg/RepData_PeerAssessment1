@@ -54,6 +54,7 @@ median(df$steps)
 
 
 ## Part 4
+library('ggplot2')
 for (i in 1:nrow(completeData)) { 
 	day <- weekdays(as.Date(completeData[i, "date"]))
 	if (day %in% c('Saturday', 'Sunday')) {
@@ -65,3 +66,5 @@ for (i in 1:nrow(completeData)) {
 }
 
 completeData <- transform(completeData, day = factor(day))
+avgPerInterval5 <- sqldf('select interval, day, avg(steps) as steps from completeData group by interval, day')
+ggplot(avgPerInterval5, aes(interval, steps)) + geom_line() + facet_grid(day ~ .) + xlab("5-minute interval") + ylab("Number of steps")
